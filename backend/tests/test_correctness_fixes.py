@@ -118,3 +118,54 @@ def test_a_unique_consecutive_run_is_still_matched():
     decision, _ = cash_app.match(conn, _line(conn, 35_000), mem)
     assert decision is not None and decision.confidence == 1.0
     assert [a["invoice_id"] for a in decision.args["allocations"]] == ["INV-1", "INV-2"]
+
+
+# ---- imported invoices issued after the start keep the ledger tied out -----------------------------------------
+
+
+def test_partially_paid_future_invoice_keeps_ar_equal_to_balances(cfg):
+    w = World(cfg, connect(":memory:"))
+    w.reset()
+    invoices = [
+        {
+            "invoice_id": "A-1",
+            "customer": "Acme",
+            "email": "ap@acme.com",
+            "po_number": None,
+            "amount": 50_000,
+            "balance": 50_000,
+            "issued_on": _d("2026-10-01"),
+            "due_on": _d("2026-10-31"),
+            "description": "a",
+        },
+        {
+            "invoice_id": "A-2",
+            "customer": "Acme",
+            "email": "ap@acme.com",
+            "po_number": None,
+            "amount": 10_000,
+            "balance": 6_000,
+            "issued_on": _d("2026-10-05"),
+            "due_on": _d("2026-11-04"),
+            "description": "b",
+        },
+    ]
+    bank = [{"date": _d("2026-10-02"), "amount": 1_000, "payer": "Someone Else", "remittance": ""}]
+    staging_ok = w.load_import_parsed(invoices, bank)
+    assert staging_ok["invoices"] == 2
+    while w.today <= "2026-10-06":
+        w.step()
+    assert w.conn.execute("SELECT status FROM invoices WHERE id='A-2'").fetchone()[0] != "scheduled"
+    ar = next(a for a in ledger.trial_balance(w.conn) if a["account"] == ledger.AR)
+    open_balances = w.conn.execute(
+        "SELECT SUM(balance_cents) FROM invoices WHERE status NOT IN ('scheduled')"
+    ).fetchone()[0]
+    assert ar["balance_cents"] == open_balances
+    ledger_check = next(c for c in verify.verify(w.conn)["checks"] if c["name"] == "ledger")
+    assert ledger_check["ok"], ledger_check
+
+
+def _d(s):
+    from datetime import date
+
+    return date.fromisoformat(s)

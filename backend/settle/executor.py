@@ -157,6 +157,20 @@ class Executor:
             invoice_id,
             f"Invoice {invoice_id} issued",
         )
+        collected = inv["amount_cents"] - inv["balance_cents"]
+        if collected > 0:  # imported books: part was paid before the import, so AR carries only the balance
+            ledger.post(
+                self.conn,
+                today,
+                ledger.CASH,
+                ledger.AR,
+                collected,
+                "invoice",
+                invoice_id,
+                f"Collected before import {invoice_id}",
+            )
+            if inv["balance_cents"] == 0:
+                inv = self._upd(invoice_id, None, "fully paid before import", status="paid")
         po = f" (PO {inv['po_number']})" if inv["po_number"] else ""
         self._email(
             None,
