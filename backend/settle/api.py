@@ -23,7 +23,7 @@ from settle import verify as verify_mod
 from settle.auth import AuthError, Directory, User, check_approval
 from settle.bitdeer import looks_like_instruction
 from settle.config import load_config
-from settle.db import loads
+from settle.db import get_meta, loads
 from settle.engine import NotFound, World
 from settle.eval import load_latest, run_ablation
 from settle.models import ACTIONS, MONEY_MOVING, Decision
@@ -331,30 +331,51 @@ def activity(after_id: int = 0, limit: int = 200):
         return [ser_activity(r, names) for r in rows]
 
 
+class StreamCursor:
+    """Where one live client is in the activity feed. A reset or import starts a new run whose activity ids restart
+    at 1, so the cursor rewinds and reports it; otherwise the client would wait for ids past the old maximum."""
+
+    BACKFILL = 50
+
+    def __init__(self):
+        with lock:
+            c = W().conn
+            self.run = get_meta(c, "run_id")
+            self.last = max(0, c.execute("SELECT COALESCE(MAX(id),0) FROM activity").fetchone()[0] - self.BACKFILL)
+
+    def poll(self, limit: int = 500) -> tuple[list[dict], bool]:
+        with lock:
+            c = W().conn
+            run = get_meta(c, "run_id")
+            reset = run != self.run
+            if reset:
+                self.run, self.last = run, 0
+            names = _names()
+            rows = c.execute("SELECT * FROM activity WHERE id>? ORDER BY id LIMIT ?", (self.last, limit)).fetchall()
+            events = [ser_activity(r, names) for r in rows]
+            if events:
+                self.last = events[-1]["id"]
+            return events, reset
+
+
 @app.get("/api/stream")
 async def stream():
-    def first_id() -> int:
+    def state():
         with lock:
-            return W().conn.execute("SELECT COALESCE(MAX(id),0) FROM activity").fetchone()[0]
-
-    def poll(last: int, need_state: bool):
-        with lock:
-            names = _names()
-            rows = W().conn.execute("SELECT * FROM activity WHERE id>? ORDER BY id LIMIT 500", (last,)).fetchall()
-            events = [ser_activity(r, names) for r in rows]
-            return events, (W().state() if events or need_state else None)
+            return W().state()
 
     async def gen():
-        last = max(0, await asyncio.to_thread(first_id) - 50)
-        last_state = None
+        cursor = await asyncio.to_thread(StreamCursor)
+        need_state = True
         while True:
-            events, state = await asyncio.to_thread(poll, last, last_state is None)
+            events, reset = await asyncio.to_thread(cursor.poll)
+            if reset:  # carries the new run id so the client doesn't treat the following state as another reset
+                yield f"event: reset\ndata: {json.dumps({'run_id': cursor.run})}\n\n"
             for ev in events:
-                last = ev["id"]
                 yield f"event: activity\ndata: {json.dumps(ev)}\n\n"
-            if state is not None:
-                last_state = state
-                yield f"event: state\ndata: {json.dumps(state)}\n\n"
+            if events or reset or need_state:
+                need_state = False
+                yield f"event: state\ndata: {json.dumps(await asyncio.to_thread(state))}\n\n"
             else:
                 yield ": keepalive\n\n"
             await asyncio.sleep(0.5)

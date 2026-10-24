@@ -31,6 +31,7 @@ export function SimProvider({ children }: { children: ReactNode }) {
   const [transport, setTransport] = useState<SimCtx['transport']>('connecting')
   const [busy, setBusy] = useState(false)
   const lastId = useRef(0)
+  const runId = useRef<string | undefined>(undefined)
 
   const addActivities = useCallback((incoming: Activity[]) => {
     if (incoming.length === 0) return
@@ -44,12 +45,22 @@ export function SimProvider({ children }: { children: ReactNode }) {
     lastId.current = Math.max(lastId.current, ...incoming.map((a) => a.id))
   }, [])
 
+  // A reset or import (here or in another tab) starts a new run whose activity ids restart: drop the stale feed.
+  const applyState = useCallback((s: SimState) => {
+    if (runId.current !== undefined && s.run_id !== undefined && s.run_id !== runId.current) {
+      lastId.current = 0
+      setActivities([])
+    }
+    runId.current = s.run_id
+    setSim(s)
+  }, [])
+
   const fetchState = useCallback(() => {
     api.state().then(
-      (s) => { setSim(s); setError(null) },
+      (s) => { applyState(s); setError(null) },
       (e) => setError(e),
     )
-  }, [])
+  }, [applyState])
 
   const pollActivity = useCallback(() => {
     api.activity(lastId.current).then(
@@ -75,7 +86,7 @@ export function SimProvider({ children }: { children: ReactNode }) {
       try {
         const s = await fn()
         if (opts?.resetFeed) resetFeed()
-        setSim(s)
+        applyState(s)
         setError(null)
         pollActivity()
       } catch (e) {
@@ -84,7 +95,7 @@ export function SimProvider({ children }: { children: ReactNode }) {
         setBusy(false)
       }
     },
-    [pollActivity, resetFeed],
+    [pollActivity, resetFeed, applyState],
   )
 
   useEffect(() => {
@@ -101,8 +112,12 @@ export function SimProvider({ children }: { children: ReactNode }) {
       try { addActivities([JSON.parse((ev as MessageEvent).data) as Activity]) }
       catch (e) { setError(new Error(`Bad activity event: ${e instanceof Error ? e.message : e}`)) }
     })
+    es.addEventListener('reset', (ev) => {
+      resetFeed()
+      try { runId.current = (JSON.parse((ev as MessageEvent).data) as { run_id?: string }).run_id } catch { /* keep the old id */ }
+    })
     es.addEventListener('state', (ev) => {
-      try { setSim(JSON.parse((ev as MessageEvent).data) as SimState); setError(null) }
+      try { applyState(JSON.parse((ev as MessageEvent).data) as SimState); setError(null) }
       catch (e) { setError(new Error(`Bad state event: ${e instanceof Error ? e.message : e}`)) }
     })
     es.onerror = () => {
@@ -111,7 +126,7 @@ export function SimProvider({ children }: { children: ReactNode }) {
       setTransport('polling')
     }
     return () => es.close()
-  }, [addActivities])
+  }, [addActivities, applyState, resetFeed])
 
   useInterval(() => { pollActivity(); fetchState() }, transport === 'polling' ? 2000 : null)
   // While backend unreachable (even under SSE), keep retrying so the banner clears itself.

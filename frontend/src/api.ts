@@ -34,6 +34,8 @@ export interface SimState {
   bitdeer: boolean
   /** sha256 head of the audit hash chain ("run fingerprint") */
   audit_head: string
+  /** Changes when the run is reset or books are imported (activity ids restart). */
+  run_id?: string
   /** sha256 of the seeded world (same seed => same digest) */
   world_digest: string
   recorder: { hits: number; misses: number }

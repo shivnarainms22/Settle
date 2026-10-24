@@ -207,3 +207,35 @@ def test_forecast_after_import_uses_the_imported_dates(client):
     fc = client.get("/api/forecast").json()
     assert fc["as_of"] == s["sim_date"] and fc["as_of"] > "2026-09-30"
     assert fc["lines"], "open imported invoices must appear in the forecast"
+
+
+# ---- the live stream follows a reset ---------------------------------------------------------------------------
+
+
+def test_state_exposes_a_run_id_that_changes_on_reset(client):
+    first = client.get("/api/state").json()["run_id"]
+    client.post("/api/sim/reset", json={"memory": True})
+    assert client.get("/api/state").json()["run_id"] != first
+
+
+def test_stream_resets_its_cursor_when_the_run_changes(client):
+    from settle import api
+
+    client.post("/api/sim/advance", json={"days": 10})
+    cursor = api.StreamCursor()
+    events, _ = cursor.poll()
+    assert events and cursor.last > 0
+    client.post("/api/sim/reset", json={"memory": True})
+    client.post("/api/sim/advance", json={"days": 3})
+    events, reset = cursor.poll()
+    assert reset is True, "the stream must tell the client its feed is stale"
+    assert events and min(e["id"] for e in events) <= 5, "and replay the new run's activity from the start"
+    events, reset = cursor.poll()
+    assert reset is False and events == []
+
+
+def test_viewer_can_still_read_after_reset(client):
+    vic = auth_headers(client, "vic")
+    client.post("/api/sim/reset", json={"memory": True})
+    assert client.get("/api/activity?after_id=0", headers=vic).json()
+    assert json.dumps(client.get("/api/state", headers=vic).json())

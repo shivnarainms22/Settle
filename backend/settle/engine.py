@@ -1729,6 +1729,7 @@ class World:
             "start_date": start.isoformat(),
             "end_date": self.end_date.isoformat(),
             "mode": get_meta(self.conn, "mode", "simulation"),
+            "run_id": get_meta(self.conn, "run_id", ""),
             "autonomy": self.autonomy,
             "day_index": (date.fromisoformat(self.today) - start).days,
             "month": min(3, (today.year - start.year) * 12 + today.month - start.month + 1),
