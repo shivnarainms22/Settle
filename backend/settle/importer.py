@@ -19,6 +19,7 @@ from settle.db import dumps, set_meta
 
 MAX_BYTES = 5_000_000
 MAX_ROWS = 20_000
+MAX_AMOUNT_CENTS = 10**13  # $100B: far above any invoice, far below SQLite's 64-bit integer limit
 
 INVOICE_COLUMNS = {
     "invoice_id": ("invoice_id", "invoice", "invoice #", "invoice no", "invoice number", "num", "number", "doc number"),
@@ -55,6 +56,8 @@ def parse_money(raw: str) -> int:
         cents = int((Decimal(text) * 100).quantize(Decimal("1")))
     except InvalidOperation as exc:
         raise ValueError(f"not an amount: {raw!r}") from exc
+    if abs(cents) > MAX_AMOUNT_CENTS:
+        raise ValueError(f"amount too large: {raw!r}")
     return -cents if negative else cents
 
 

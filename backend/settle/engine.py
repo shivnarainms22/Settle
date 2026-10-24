@@ -142,15 +142,30 @@ class World:
         so a bad file never destroys the current run."""
         from settle import importer
 
-        invoices = importer.parse_invoices(invoices_csv)
-        bank = importer.parse_bank(bank_csv)
-        drop_all(self.conn)
-        create_schema(self.conn)
+        return self.load_import_parsed(
+            importer.parse_invoices(invoices_csv), importer.parse_bank(bank_csv), memory, autonomy
+        )
+
+    def load_import_parsed(
+        self, invoices: list[dict], bank: list[dict], memory: bool = True, autonomy: str = "autonomous"
+    ) -> dict:
+        """Load already-parsed books. They are built in a staging database first, so a failure at any point (bad
+        data SQLite rejects, a bug) leaves the current run untouched; only a complete build replaces it."""
+        from settle import importer
+
         if autonomy not in AUTONOMY_MODES:
             raise ValueError(f"autonomy must be one of {AUTONOMY_MODES}")
-        summary = importer.seed_import(self.conn, invoices, bank, memory)
-        set_meta(self.conn, "autonomy_mode", autonomy)
-        set_meta(self.conn, "run_id", str(int(time.time() * 1000)))  # Moss session name only; never hashed
+        staging = connect(":memory:")
+        try:
+            create_schema(staging)
+            summary = importer.seed_import(staging, invoices, bank, memory)
+            set_meta(staging, "autonomy_mode", autonomy)
+            set_meta(staging, "run_id", str(int(time.time() * 1000)))  # Moss session name only; never hashed
+            staging.commit()
+            self.conn.commit()
+            staging.backup(self.conn)  # replaces the live database's contents in one step
+        finally:
+            staging.close()
         self._setup_runtime()
         log_activity(
             self.conn,
