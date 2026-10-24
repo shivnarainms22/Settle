@@ -58,9 +58,7 @@ export default function Layout() {
           ))}
         </nav>
         <div className="mt-auto px-2 text-[11px] leading-relaxed text-slate-500">
-          Cal Hacks 13.0
-          <br />
-          Autonomous Systems for Finance
+          Built at Cal Hacks 13.0
         </div>
       </aside>
       <main className="min-w-0 flex-1 px-8 py-7">
