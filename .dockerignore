@@ -1,0 +1,10 @@
+**/node_modules
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.env
+backend/data
+frontend/dist
+*.log
+.git
+.claude-done
