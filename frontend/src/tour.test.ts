@@ -18,9 +18,12 @@ describe('TOUR_STEPS', () => {
 
   it('opens the first matching decision, else the step page', () => {
     const fraud = TOUR_STEPS.find((s) => s.title.startsWith('Fraud'))!
-    const ds = [dec({ id: 9, action: 'issue_refund', status: 'blocked' }), dec({ id: 3, action: 'issue_refund', status: 'blocked' })]
+    const email = { kind: 'email' as const, ref: 'E-52', summary: '' }
+    // whatever the model chose (refund or escalate), the blocked lookalike-domain email is the decision to open
+    const ds = [dec({ id: 9, action: 'escalate', status: 'blocked', work_item: email }), dec({ id: 3, action: 'issue_refund', status: 'blocked', work_item: email })]
     expect(stepTarget(fraud, ds)).toBe('/decisions/3')
-    expect(stepTarget(fraud, [dec({ action: 'issue_refund', status: 'pending_approval' })])).toBe(fraud.path)
+    expect(stepTarget(fraud, [dec({ action: 'issue_refund', status: 'pending_approval', work_item: email })])).toBe(fraud.path)
+    expect(stepTarget(fraud, [dec({ action: 'update_bank_details', status: 'blocked' })])).toBe(fraud.path)
     const noPick = TOUR_STEPS.find((s) => !s.pick)!
     expect(stepTarget(noPick, ds)).toBe(noPick.path)
   })

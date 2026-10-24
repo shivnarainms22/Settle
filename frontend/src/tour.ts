@@ -30,7 +30,7 @@ export const TOUR_STEPS: TourStep[] = [
     title: 'Fraud blocked, even if the agent were fooled',
     to: '2026-07-21',
     path: '/',
-    pick: (d) => d.action === 'issue_refund' && d.status === 'blocked',
+    pick: (d) => d.status === 'blocked' && d.work_item?.kind === 'email',
     detail: 'A lookalike domain (pellucidfre1ght.com) asks for a refund to a new account. Policy is code that runs after the agent: tier 3, blocked, nothing posts.',
   },
   {
