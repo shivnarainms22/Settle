@@ -1,0 +1,6 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body { @apply bg-slate-100 text-slate-800 font-sans antialiased; }
+.money, .tnum { font-variant-numeric: tabular-nums; }
