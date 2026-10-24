@@ -1,0 +1,35 @@
+[project]
+name = "settle"
+version = "0.1.0"
+description = "Settle - autonomous order-to-cash agent with memory (Cal Hacks 13.0)"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "anthropic>=0.70",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+moss = ["moss>=1.21"]
+
+[dependency-groups]
+dev = ["pytest>=8", "httpx>=0.27", "ruff>=0.6"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.setuptools]
+packages = ["settle"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
