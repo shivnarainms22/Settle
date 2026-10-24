@@ -70,7 +70,10 @@ def test_combined_payment_split_across_three_invoices(world):
     )
     assert combined, "expected Ostrander combined payments"
     for d in combined:
-        assert d["source"] == "deterministic" and d["tier"] == 0 and d["correct"] == 1
+        assert d["source"] == "deterministic" and d["correct"] == 1
+        # a unique run applies itself; when two runs fit the amount it is proposed for a human to confirm
+        assert d["tier"] == 0 or (d["tier"] == 2 and "runs of consecutive open invoices" in d["rationale"])
+    assert any(d["tier"] == 2 for d in combined), "seed 7 has one genuinely ambiguous Ostrander wire (Aug 13)"
 
 
 def test_alias_payment_needs_human_first_then_auto_with_memory(cfg):

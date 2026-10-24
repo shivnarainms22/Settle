@@ -169,7 +169,28 @@ def match(conn: sqlite3.Connection, line: sqlite3.Row, memory: MemoryStore) -> t
     # which are often ambiguous when many invoices share round amounts.
     runs = [tuple(pool[i : i + n]) for n in range(2, SUBSET_MAX_SIZE + 1) for i in range(len(pool) - n + 1)]
     run_hits = [r for r in runs if sum(x["balance_cents"] for x in r) == amount]
-    hits = run_hits[:1] if run_hits else []
+    if len(run_hits) > 1:
+        # e.g. $200 against three $100 invoices. Several runs fit, so this is not a match: propose the oldest-first
+        # run (the usual way payers clear AR) at low confidence, which policy routes to a human with the options.
+        first = run_hits[0]
+        options = "; ".join(" + ".join(x["id"] for x in r) for r in run_hits)
+        return Decision(
+            "apply_payment",
+            {"bank_line_id": line["id"], "allocations": _alloc(first)},
+            f"{why[0].upper() + why[1:]}; no remittance, and {len(run_hits)} runs of consecutive open invoices add up"
+            f" to this amount ({options}). Proposing the oldest-first run; confirm or edit the allocation.",
+            [*ev, *dict.fromkeys(f"invoice:{x['id']}" for r in run_hits for x in r)],
+            memory_ids,
+            confidence=0.5,
+            source="deterministic",
+            provenance={
+                "component": "cash_app",
+                "rule": "payer_invoice_run_ambiguous",
+                "how": how,
+                "candidates": [[x["id"] for x in r] for r in run_hits],
+            },
+        ), cust
+    hits = run_hits[:1]
     for size in range(2, min(SUBSET_MAX_SIZE, len(pool)) + 1):
         if run_hits:
             break
@@ -185,8 +206,9 @@ def match(conn: sqlite3.Connection, line: sqlite3.Row, memory: MemoryStore) -> t
         return Decision(
             "apply_payment",
             {"bank_line_id": line["id"], "allocations": _alloc(combo)},
-            f"{why[0].upper() + why[1:]}; no remittance, but the amount equals exactly one combination of"
-            f" {len(combo)} open invoices ({', '.join(r['id'] for r in combo)}).",
+            f"{why[0].upper() + why[1:]}; no remittance, but the amount equals exactly one"
+            f" {'run of consecutive' if run_hits else 'combination of'} {len(combo)} open invoices"
+            f" ({', '.join(r['id'] for r in combo)}).",
             [*ev, *(f"invoice:{r['id']}" for r in combo)],
             memory_ids,
             confidence=1.0,

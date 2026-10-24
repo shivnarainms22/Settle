@@ -74,3 +74,47 @@ def test_successful_import_still_replaces_the_run(cfg):
     w.load_import(AR, BANK)
     assert _invoice_count(w) == 18 and w.state()["mode"] == "import"
     assert verify.verify(w.conn)["ok"] is True
+
+
+# ---- ambiguous cash must go to review, not be applied at confidence 1.0 -----------------------------------------
+
+
+def _cash_conn(amounts: list[int]):
+    conn = connect(":memory:")
+    create_schema(conn)
+    conn.execute("INSERT INTO customers VALUES('C-1','Acme Corp','standard','acme.com','ap@acme.com','****1','Pat')")
+    conn.execute("INSERT INTO profiles(customer_id) VALUES('C-1')")
+    for i, amt in enumerate(amounts):
+        conn.execute(
+            "INSERT INTO invoices(id, customer_id, po_number, amount_cents, balance_cents, issued_on, due_on, status,"
+            " description) VALUES(?,?,?,?,?,?,?,?,?)",
+            (f"INV-{i + 1}", "C-1", None, amt, amt, "2026-07-01", f"2026-07-{10 + i}", "open", "x"),
+        )
+    return conn, MemoryStore(conn, True, FtsIndex(conn))
+
+
+def _line(conn, amount: int):
+    conn.execute("INSERT INTO bank_lines VALUES('B-1',?,?,?,?,0)", (amount, "ACME CORP", "", "2026-07-20"))
+    return conn.execute("SELECT * FROM bank_lines WHERE id='B-1'").fetchone()
+
+
+def test_two_consecutive_runs_matching_is_ambiguous_and_goes_to_a_human():
+    from settle.policy import PolicyContext, assign_tier
+
+    conn, mem = _cash_conn([10_000, 10_000, 10_000])  # $200 = INV-1+INV-2 or INV-2+INV-3
+    decision, cust = cash_app.match(conn, _line(conn, 20_000), mem)
+    assert cust == "C-1" and decision is not None
+    assert decision.confidence < 1.0 and "2 runs" in decision.rationale
+    assert [a["invoice_id"] for a in decision.args["allocations"]] == ["INV-1", "INV-2"]  # oldest first, proposed
+    assert decision.provenance["candidates"] == [["INV-1", "INV-2"], ["INV-2", "INV-3"]]
+    tier, reasons = assign_tier(
+        decision, PolicyContext(customer_tier="standard", verified_domain="acme.com", bank_account_on_file="****1")
+    )
+    assert tier == 2, reasons
+
+
+def test_a_unique_consecutive_run_is_still_matched():
+    conn, mem = _cash_conn([10_000, 25_000, 40_000])
+    decision, _ = cash_app.match(conn, _line(conn, 35_000), mem)
+    assert decision is not None and decision.confidence == 1.0
+    assert [a["invoice_id"] for a in decision.args["allocations"]] == ["INV-1", "INV-2"]
