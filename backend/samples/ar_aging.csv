@@ -1,0 +1,19 @@
+Date,Transaction Type,Num,Customer,Customer Email,Due Date,Amount,Open Balance,P.O. Number,Memo
+2026-08-04,Invoice,5101,Ridgeline Packaging Co.,ap@ridgelinepkg.com,2026-09-03,"$4,850.00","$4,850.00",,Corrugated tooling
+2026-08-11,Invoice,5102,Harbor & Finch LLC,payables@harborfinch.com,2026-09-10,"$12,400.00","$12,400.00",HF-2231,Display fixtures
+2026-08-18,Invoice,5103,Coastal Aero Parts,ap@coastalaero.com,2026-09-17,"$27,300.00","$27,300.00",CAP-889,Machined brackets
+2026-08-25,Invoice,5104,Brightwell Dental Group,billing@brightwelldental.com,2026-09-24,"$3,175.00","$3,175.00",,Sterilizer service
+2026-09-01,Invoice,5105,Tamarack Outdoor Supply,ap@tamarackoutdoor.com,2026-10-01,"$9,960.00","$9,960.00",,Rack systems
+2026-09-03,Invoice,5106,Ridgeline Packaging Co.,ap@ridgelinepkg.com,2026-10-03,"$6,125.00","$6,125.00",,Die-cut inserts
+2026-09-08,Invoice,5107,Norvane Biotech,ap@norvanebio.com,2026-10-08,"$18,750.00","$18,750.00",NB-4410,Cold-storage racks
+2026-09-12,Invoice,5108,Quarry Lane Builders,accounts@quarrylane.com,2026-10-12,"$15,500.00","$15,500.00",,Steel framing
+2026-09-15,Invoice,5109,Lumen & Vale Interiors,ap@lumenvale.com,2026-10-15,"$7,240.00","$7,240.00",,Lighting install
+2026-09-19,Invoice,5110,Harbor & Finch LLC,payables@harborfinch.com,2026-10-19,"$8,900.00","$8,900.00",HF-2270,Signage
+2026-09-22,Invoice,5111,Coastal Aero Parts,ap@coastalaero.com,2026-10-22,"$11,050.00","$5,525.00",CAP-901,Fasteners (50% prepaid)
+2026-09-26,Invoice,5112,Brightwell Dental Group,billing@brightwelldental.com,2026-10-26,"$2,480.00","$2,480.00",,Chair maintenance
+2026-09-29,Invoice,5113,Tamarack Outdoor Supply,ap@tamarackoutdoor.com,2026-10-29,"$14,300.00","$14,300.00",,Warehouse shelving
+2026-10-02,Invoice,5114,Norvane Biotech,ap@norvanebio.com,2026-11-01,"$9,600.00","$9,600.00",NB-4475,Lab benches
+2026-10-06,Invoice,5115,Quarry Lane Builders,accounts@quarrylane.com,2026-11-05,"$22,800.00","$22,800.00",,Roof trusses
+2026-10-09,Invoice,5116,Lumen & Vale Interiors,ap@lumenvale.com,2026-11-08,"$5,330.00","$5,330.00",,Fixture swap
+2026-10-13,Invoice,5117,Ridgeline Packaging Co.,ap@ridgelinepkg.com,2026-11-12,"$3,995.00","$3,995.00",,Pallet wrap
+2026-10-16,Invoice,5118,Harbor & Finch LLC,payables@harborfinch.com,2026-11-15,"$10,200.00","$10,200.00",HF-2302,Kiosks
