@@ -20,7 +20,8 @@ month. It measures how much less, and it can replay any run to the same cryptogr
 - **Every action can be verified.**
   - Each state change is a hash-chained audit event.
   - Each decision stores the exact input the model saw, with its hash.
-  - A 10-check verifier re-derives the whole run: policy replay, invoice replay and ledger tie-out.
+  - A verifier re-derives the whole run with nine independent checks (policy replay, invoice replay, ledger
+    tie-out and more), plus a determinism re-run.
 - **Deterministic replay.** Every Claude, Moss and Bitdeer call is recorded. The same seed plus the same recordings
   gives the same audit-chain head, offline.
 - **Built to pilot.**
@@ -121,7 +122,7 @@ deliberation is 3.5–3.8× faster and gives the same audit head.
 | ![Dispute judged on evidence](assets/screenshots/decision-credit-memo.png) | ![Prompt injection detected and ignored](assets/screenshots/decision-prompt-injection.png) |
 | **A dispute judged on evidence:** a pro-rata credit, backed by the carrier record. | **Prompt injection** from a verified customer domain, detected and ignored. |
 | ![Memory ablation](assets/screenshots/eval.png) | ![Verifier](assets/screenshots/verify.png) |
-| **Memory ablation**, plus a reproducibility proof. | **10 independent checks** over the whole run. |
+| **Memory ablation**, plus a reproducibility proof. | **9 independent checks** over the whole run. |
 
 ## Quick start
 
@@ -164,7 +165,7 @@ cd frontend && npm install && npm run dev      # http://localhost:5173
 ```bash
 cd backend
 uv run pytest -q                              # 145 tests
-uv run python -m settle.verify --offline      # 10-check end-to-end verifier, plus a determinism re-run
+uv run python -m settle.verify --offline      # 9-check end-to-end verifier, plus a determinism re-run
 uv run python -m settle.eval --heuristic      # memory ablation offline (drop --heuristic to use Claude)
 uv run python -m settle.retrieval_eval        # FTS5 vs Moss vs fused, ± Bitdeer rerank
 uv run python -m settle.bench                 # scale and concurrency

@@ -76,7 +76,7 @@ export const TOUR_STEPS: TourStep[] = [
     title: 'Prove all of it',
     to: '2026-10-01',
     path: '/verify',
-    detail: 'Ten independent checks re-derive the run: hash chain, policy replay, invoice replay, ledger tie-out. Download the audit trail, and compare memory on vs off on the Eval page.',
+    detail: 'Nine independent checks re-derive the run: hash chain, policy replay, invoice replay, ledger tie-out. Download the audit trail, and compare memory on vs off on the Eval page.',
   },
 ]
 
