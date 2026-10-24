@@ -193,3 +193,17 @@ def test_plan_forecast_splits_a_partly_paid_installment():
     conn.execute("UPDATE invoices SET status='plan', balance_cents=25000, plan_json=? WHERE id='INV-1'", (dumps(plan),))
     lines = [x for x in forecast.forecast(conn, mem, "2026-07-10")["lines"] if x["invoice_id"] == "INV-1"]
     assert [(x["date"], x["amount_cents"]) for x in lines] == [("2026-07-15", 5_000), ("2026-07-22", 20_000)]
+
+
+# ---- the API uses the current run's dates, not the demo's ------------------------------------------------------
+
+
+def test_forecast_after_import_uses_the_imported_dates(client):
+    samples = client.get("/api/import/samples").json()
+    client.post(
+        "/api/import", json={"invoices_csv": samples["ar_aging.csv"], "bank_csv": samples["bank_statement.csv"]}
+    )
+    s = client.get("/api/state").json()
+    fc = client.get("/api/forecast").json()
+    assert fc["as_of"] == s["sim_date"] and fc["as_of"] > "2026-09-30"
+    assert fc["lines"], "open imported invoices must appear in the forecast"

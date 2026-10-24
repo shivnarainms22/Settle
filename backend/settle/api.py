@@ -589,7 +589,7 @@ def trace(ref: str, limit: int = 500):
 def get_forecast():
     with lock:
         w = W()
-        as_of = min(w.today, "2026-09-30")
+        as_of = min(w.today, w.end_date.isoformat())
         fc = forecast.forecast(w.conn, w.memory, as_of)
         fc["snapshots"] = [
             a
@@ -671,7 +671,7 @@ def _set_playbook(playbook_id: int, status: str, user: User):
 
         log_activity(
             w.conn,
-            min(w.today, "2026-09-30"),
+            min(w.today, w.end_date.isoformat()),
             "playbook",
             f"Playbook #{playbook_id} {'activated' if status == 'active' else 'disabled'} for {p['name']}"
             f" (v{p['version']}) by {user.name}",
