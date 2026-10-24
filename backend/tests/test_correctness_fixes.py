@@ -169,3 +169,27 @@ def _d(s):
     from datetime import date
 
     return date.fromisoformat(s)
+
+
+# ---- payment-plan forecasts count only what is still owed ------------------------------------------------------
+
+
+def test_plan_forecast_counts_only_unpaid_installments():
+    conn, mem = _cash_conn([30_000])
+    plan = [
+        {"date": "2026-07-15", "amount_cents": 10_000},
+        {"date": "2026-07-22", "amount_cents": 10_000},
+        {"date": "2026-07-29", "amount_cents": 10_000},
+    ]
+    conn.execute("UPDATE invoices SET status='plan', balance_cents=10000, plan_json=? WHERE id='INV-1'", (dumps(plan),))
+    fc = forecast.forecast(conn, mem, "2026-07-10")
+    lines = [x for x in fc["lines"] if x["invoice_id"] == "INV-1"]
+    assert [(x["date"], x["amount_cents"]) for x in lines] == [("2026-07-29", 10_000)]
+
+
+def test_plan_forecast_splits_a_partly_paid_installment():
+    conn, mem = _cash_conn([30_000])
+    plan = [{"date": "2026-07-15", "amount_cents": 10_000}, {"date": "2026-07-22", "amount_cents": 20_000}]
+    conn.execute("UPDATE invoices SET status='plan', balance_cents=25000, plan_json=? WHERE id='INV-1'", (dumps(plan),))
+    lines = [x for x in forecast.forecast(conn, mem, "2026-07-10")["lines"] if x["invoice_id"] == "INV-1"]
+    assert [(x["date"], x["amount_cents"]) for x in lines] == [("2026-07-15", 5_000), ("2026-07-22", 20_000)]

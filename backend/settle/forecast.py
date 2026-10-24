@@ -38,14 +38,13 @@ def forecast(conn: sqlite3.Connection, memory: MemoryStore, as_of: str, weeks: i
             )
             continue
         if inv["plan_json"]:
-            for p in loads(inv["plan_json"], []):
-                d = max(date.fromisoformat(p["date"]), today)
+            for d, amount in unpaid_installments(loads(inv["plan_json"], []), inv["balance_cents"], today):
                 lines.append(
                     {
                         "invoice_id": inv["id"],
                         "customer_id": inv["customer_id"],
                         "date": d.isoformat(),
-                        "amount_cents": min(int(p["amount_cents"]), inv["balance_cents"]),
+                        "amount_cents": amount,
                         "basis": "plan",
                     }
                 )
@@ -86,6 +85,22 @@ def forecast(conn: sqlite3.Connection, memory: MemoryStore, as_of: str, weeks: i
         "lines": lines,
         "at_risk": at_risk,
     }
+
+
+def unpaid_installments(plan: list[dict], balance_cents: int, today: date) -> list[tuple[date, int]]:
+    """What is still owed per installment: payments so far cover the earliest installments first, and the total
+    never exceeds the open balance."""
+    installments = sorted((date.fromisoformat(p["date"]), int(p["amount_cents"])) for p in plan)
+    covered = max(0, sum(a for _, a in installments) - balance_cents)
+    remaining, out = balance_cents, []
+    for d, amount in installments:
+        paid = min(covered, amount)
+        covered -= paid
+        owed = min(amount - paid, remaining)
+        if owed > 0:
+            out.append((max(d, today), owed))
+            remaining -= owed
+    return out
 
 
 def snapshot(conn: sqlite3.Connection, memory: MemoryStore, as_of: str) -> None:
