@@ -164,7 +164,7 @@ cd frontend && npm install && npm run dev      # http://localhost:5173
 
 ```bash
 cd backend
-uv run pytest -q                              # 145 tests
+uv run pytest -q                              # 159 tests
 uv run python -m settle.verify --offline      # 9-check end-to-end verifier, plus a determinism re-run
 uv run python -m settle.eval --heuristic      # memory ablation offline (drop --heuristic to use Claude)
 uv run python -m settle.retrieval_eval        # FTS5 vs Moss vs fused, ± Bitdeer rerank
